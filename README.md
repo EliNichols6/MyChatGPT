@@ -15,7 +15,7 @@ MyChatGPT is a project that allows integration of OpenAI's ChatGPT into the Seco
 2. Install the required Python packages:
 
     ```bash
-    pip install Flask openai python-dotenv
+    pip install Flask openai python-dotenv langchain 
     ```
 
 3. Clone this repository to your local machine.
