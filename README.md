@@ -39,7 +39,7 @@ MyChatGPT is a project that allows integration of OpenAI's ChatGPT into the Seco
 
 8. Replace the URL in `MyChatGPT.lsl` with your Python server's URL.
 
-9. Create a 'data.pkl' file in the root directory and run 'pickleload.py' to allow the server to interact with data.pkl
+9. Create a `data.pkl` file in the root directory and run `pickleload.py` to allow the server to interact with data.pkl
 
 10. Upload the `MyChatGPT.lsl` script to Second Life and attach it to an object.
     
