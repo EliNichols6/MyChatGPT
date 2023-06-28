@@ -28,22 +28,23 @@ MyChatGPT is a project that allows integration of OpenAI's ChatGPT into the Seco
     OPENAI_API_KEY=your_key_here
     OPENAI_ORGANIZATION=your_key_here
     ```
+    
+6. Create a `data.pkl` file in the root directory and run `pickleload.py` to allow the server to interact with data.pkl
 
-6. Replace the placeholders in `lslserver.py` with your OpenAI API key and organization ID.
+7. Create a `conversations.db` file in the root directory - this will store user conversations
 
-7. Run the Python server:
+8. Run the Python server:
 
     ```bash
     python3 lslserver.py
     ```
 
-8. Replace the URL in `MyChatGPT.lsl` with your Python server's URL.
 
-9. Create a `data.pkl` file in the root directory and run `pickleload.py` to allow the server to interact with data.pkl
+9. Upload the `MyChatGPT.lsl` script to Second Life and attach it to an object.
 
-10. Upload the `MyChatGPT.lsl` script to Second Life and attach it to an object.
+10. Replace the URL in `MyChatGPT.lsl` with your Python server's URL.
     
-12. Update the code with your corresponding userId
+11. Update the top of the lsl script your corresponding userId
 
 ## Usage
 Once you're in Second Life, type a message in the local chat near the object with the LSL script starting with `/chatgpt`, followed by your question or statement. The ChatGPT-powered NPC will respond accordingly.
