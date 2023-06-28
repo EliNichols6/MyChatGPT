@@ -12,8 +12,8 @@ from langchain.schema import (
 
 app = Flask(__name__)
 
-DATA_FILE = '' # Example: data.pkl
-DB_FILE = '' # Example: conversations.db
+DATA_FILE = 'data.pkl' 
+DB_FILE = 'conversations.db' 
 
 def save_data(user_messages, user_data):
     data = {
