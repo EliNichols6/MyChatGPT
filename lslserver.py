@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+
+from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 import os
 import sqlite3
@@ -27,7 +28,7 @@ def load_data():
     try:
         with open(DATA_FILE, 'rb') as f:
             data = pickle.load(f)
-            return data['user_messages'], data['user_data']
+            return data.get('user_messages', {}), data.get('user_data', {})
     except FileNotFoundError:
         return {}, {}
 
@@ -56,6 +57,10 @@ chat = ChatOpenAI(temperature=0)
 
 # Initialize dictionaries to hold the messages for each user and the corresponding data
 user_messages, user_data = load_data()
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html', messages=user_messages.get('0', []))
 
 @app.route('/chat', methods=['POST'])
 def handle_chat():
@@ -150,4 +155,4 @@ def check_user():
     })
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=0)
+    app.run(host='0.0.0.0', port=5000)
