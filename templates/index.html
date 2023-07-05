@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MyChatGPT</title>
+    <style>
+        .container {
+            width: 80%;
+            margin: auto;
+            padding-top: 20px;
+        }
+
+        .message {
+            margin: 10px 0;
+        }
+
+        .user {
+            color: blue;
+        }
+
+        .assistant {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>MyChatGPT</h1>
+        <div id="message-container"></div>
+        <form id="message-form">
+            <input type="text" id="user-message" placeholder="Type your message..." autocomplete="off">
+            <button type="submit">Send</button>
+        </form>
+    </div>
+
+    <script>
+        const messageContainer = document.getElementById('message-container');
+        const messageForm = document.getElementById('message-form');
+        const userMessageInput = document.getElementById('user-message');
+
+        messageForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userMessage = userMessageInput.value.trim();
+
+            if (userMessage !== '') {
+                displayMessage('You: ' + userMessage, 'user');
+                userMessageInput.value = '';
+
+                if (userMessage.toLowerCase() === 'clear') {
+                    clearMessages();
+                } else {
+                    sendMessage(userMessage);
+                }
+            }
+        });
+
+        function displayMessage(message, className) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message');
+            messageElement.classList.add(className);
+
+            const textElement = document.createElement('p');
+            messageElement.appendChild(textElement);
+
+            let charIndex = 0;
+            const typingSpeed = 50; // Adjust typing speed here (milliseconds)
+
+            const typingInterval = setInterval(() => {
+                if (charIndex < message.length) {
+                    const char = message.charAt(charIndex);
+                    textElement.innerHTML += char;
+                    charIndex++;
+                } else {
+                    clearInterval(typingInterval);
+                }
+            }, typingSpeed);
+
+            messageContainer.appendChild(messageElement);
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+        function sendMessage(userMessage) {
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: userMessage,
+                    user_id: '0'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const aiResponse = data.response;
+                displayMessage('MyChatGPT: ' + aiResponse, 'assistant');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function clearMessages() {
+            messageContainer.innerHTML = '';
+        }
+    </script>
+</body>
+</html>
