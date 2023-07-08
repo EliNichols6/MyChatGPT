@@ -1,15 +1,14 @@
-
 from flask import Flask, request, jsonify, render_template
-from dotenv import load_dotenv
-import os
-import sqlite3
-import pickle
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import (
     SystemMessage,
     HumanMessage,
     AIMessage
 )
+import os
+import sqlite3
+import pickle
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
@@ -52,8 +51,13 @@ def setup_db():
 
 setup_db()
 
-load_dotenv()  # loads api key from '.env' file
-chat = ChatOpenAI(temperature=0)
+load_dotenv()  # loads environment variables from '.env' file
+
+# Get the OpenAI API key from the environment variable
+openai_api_key = os.getenv('OPENAI_API_KEY')
+
+# Initialize the ChatOpenAI object with the API key
+chat = ChatOpenAI(api_key=openai_api_key, temperature=0)
 
 # Initialize dictionaries to hold the messages for each user and the corresponding data
 user_messages, user_data = load_data()
