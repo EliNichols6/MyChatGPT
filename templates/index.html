@@ -59,43 +59,28 @@
             messageElement.classList.add(className);
 
             const textElement = document.createElement('p');
+            textElement.textContent = message;
             messageElement.appendChild(textElement);
-
-            let charIndex = 0;
-            const typingSpeed = 50; // Adjust typing speed here (milliseconds)
-
-            const typingInterval = setInterval(() => {
-                if (charIndex < message.length) {
-                    const char = message.charAt(charIndex);
-                    textElement.innerHTML += char;
-                    charIndex++;
-                } else {
-                    clearInterval(typingInterval);
-                }
-            }, typingSpeed);
 
             messageContainer.appendChild(messageElement);
             messageContainer.scrollTop = messageContainer.scrollHeight;
         }
 
-        function sendMessage(userMessage) {
+        function sendMessage(message) {
             fetch('/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    message: userMessage,
+                    message: message,
                     user_id: '0'
                 })
             })
             .then(response => response.json())
             .then(data => {
                 const aiResponse = data.response;
-                displayMessage('MyChatGPT: ' + aiResponse, 'assistant');
-            })
-            .catch(error => {
-                console.error('Error:', error);
+                displayMessage('AI: ' + aiResponse, 'assistant');
             });
         }
 
