@@ -1,5 +1,5 @@
-string url = "http://ec2-3-144-200-75.us-east-2.compute.amazonaws.com:42061/chat"; // Replace with your Python server URL
-string userId = "1"; // Set your user ID here
+string url = "http://localhost:5000/chat";  // Replace with the appropriate URL
+string userId = "1";  // Set your user ID here
 
 default
 {
@@ -10,10 +10,10 @@ default
 
     listen(integer channel, string name, key id, string message)
     {
-        if (llGetSubString(message, 0, 7) == "/chatgpt")
+        if (llGetSubString(message, 0, 9) == "/mychatgpt")
         {
-            // Extract the actual message after "/chatgpt "
-            string actualMessage = llGetSubString(message, 9, -1);
+            // Extract the actual message after "/mychatgpt "
+            string actualMessage = llGetSubString(message, 11, -1);
             string body = "{\"message\": \"" + actualMessage + "\", \"user_id\": \"" + userId + "\"}";
             llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/json", HTTP_BODY_MAXLENGTH, 8192], body);
         }
