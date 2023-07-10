@@ -1,76 +1,41 @@
-string chatGPTAvatar = "MyChatGPT";  // The name of your MyChatGPT avatar
-key httpRequestID;
-key mediaPrimID;  // UUID of the media prim
+// Constants
+string FLASK_SERVER_URL = "http://ec2-52-70-243-182.compute-1.amazonaws.com/";  // Replace with your Flask server URL
 
-list parseJson(string jsonString)
-{
-    list jsonList;
-    integer length = llStringLength(jsonString);
-    string value = "";
-    integer i;
+// Media texture UUID
+key MEDIA_TEXTURE = "328a1c20-95a1-4bea-8f40-49043ef242ad";  // Replace with the UUID of your media texture
 
-    for (i = 0; i < length; i++)
-    {
-        string character = llGetSubString(jsonString, i, i);
+// Variables
+key userUUID;  // User's UUID
+string webURL;  // Web URL for displaying chat history
 
-        if (character == "{" || character == "[" || character == "\"" || character == ",")
-        {
-            if (value != "")
-            {
-                jsonList += value;
-                value = "";
-            }
-        }
-        else if (character == "}" || character == "]")
-        {
-            if (value != "")
-            {
-                jsonList += value;
-                value = "";
-            }
-
-            jsonList += character;
-        }
-        else if (character != " " && character != "\n" && character != "\r" && character != "\t")
-        {
-            value += character;
-        }
-    }
-
-    return jsonList;
-}
-
+// Event handler for receiving nearby chat messages
 default
 {
     state_entry()
     {
-        llListen(-5000, "", llGetOwner(), "");  // Listen on channel -5000
-        mediaPrimID = llGetKey();
-        llSetPrimMediaParams(mediaPrimID, [
-            PRIM_MEDIA_CURRENT_URL, "http://ec2-34-238-124-82.compute-1.amazonaws.com:5000/",
-            PRIM_MEDIA_AUTO_SCALE, TRUE,
-            PRIM_MEDIA_AUTO_LOOP, FALSE,
-            PRIM_MEDIA_AUTO_PLAY, TRUE
-        ]);
+        llListen(0, "", NULL_KEY, "");  // Listen to all channels and chat from any source
+        
+        // Get user's UUID
+        userUUID = llGetOwner();
+        
+        // Set the initial web URL
+        webURL = FLASK_SERVER_URL + "/check?user_id=" + (string)userUUID;
     }
 
     listen(integer channel, string name, key id, string message)
     {
         if (message == "/mychatgpt")
         {
-            llInstantMessage(id, "Type your message after '/mychatgpt' to interact with MyChatGPT.");
+            // Request chat history from Flask server
+            llHTTPRequest(webURL, [HTTP_METHOD, "GET"], "");
         }
-        else if (llGetSubString(message, 0, 11) == "/mychatgpt ")
+        else if (llGetSubString(message, 0, 9) == "/mychatgpt")
         {
-            string userMessage = llGetSubString(message, 12, -1);  // Extract the user's message
-            string url = "http://ec2-34-238-124-82.compute-1.amazonaws.com/chat";  // Update with the appropriate URL
-            string postData = "message=" + llEscapeURL(userMessage) + "&user_id=" + (string)llGetOwner();
-
-            httpRequestID = llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/x-www-form-urlencoded"], postData);
-        }
-        else
-        {
-            llInstantMessage(id, "Unknown command. Use '/mychatgpt' to start a MyChatGPT conversation.");
+            // Extract the actual message after "/mychatgpt "
+            string actualMessage = llGetSubString(message, 11, -1);
+            string url = FLASK_SERVER_URL + "/chat";
+            string body = "{\"message\": \"" + actualMessage + "\", \"user_id\": \"" + (string)userUUID + "\"}";
+            llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/json", HTTP_BODY_MAXLENGTH, 8192], body);
         }
     }
 
@@ -78,70 +43,44 @@ default
     {
         if (status == 200)
         {
-            string contentType = "";
-            integer count = llGetListLength(metadata);
-            integer i;
-            string headerKey;
-            string value;
+            // Split the chat history string into individual messages
+            list split = llParseString2List(body, ["\n"], []);
+            list messages = split;
 
-            for (i = 0; i < count; i += 2)
-            {
-                headerKey = llList2String(metadata, i);
-                value = llList2String(metadata, i + 1);
-                if (headerKey == "content-type")
-                {
-                    contentType = value;
-                    break;
-                }
-            }
+            // Generate HTML content for the chat history
+            string htmlContent = "<html><body><h1>Chat History</h1>";
 
-            if (contentType == "application/json")
-            {
-                list jsonList = parseJson(body);
-                string aiResponse = llList2String(jsonList, 0);
-
-                llInstantMessage(llGetOwner(), chatGPTAvatar + ": " + aiResponse);
-                updateMediaPrim();
-            }
-        }
-    }
-    
-    updateMediaPrim()
-    {
-        string url = "http://ec2-34-238-124-82.compute-1.amazonaws.com:5000/check?user_id=" + (string)llGetOwner();
-        httpRequestID = llHTTPRequest(url, [HTTP_METHOD, "GET"]);
-    }
-
-    http_response(key request_id, integer status, list metadata, string body)
-    {
-        if (status == 200)
-        {
-            list jsonData = llJson2List(body);
-            integer userMessageCount = llList2Integer(jsonData, 0);
-            list messages = llList2List(jsonData, 1);
-            
-            // Construct the HTML content
-            string htmlContent = "<html><body>";
-            htmlContent += "<h1>Chat History</h1>";
-            htmlContent += "<h2>User Message Count: " + (string)userMessageCount + "</h2>";
-            htmlContent += "<ul>";
-            integer i;
+            // Loop through each message and append it to the HTML content
             integer numMessages = llGetListLength(messages);
+            integer i;
             for (i = 0; i < numMessages; ++i)
             {
                 string message = llList2String(messages, i);
-                htmlContent += "<li>" + message + "</li>";
+                htmlContent += "<p>" + message + "</p>";
             }
-            htmlContent += "</ul>";
+
             htmlContent += "</body></html>";
-            
-            // Update the media prim with the HTML content
-            llSetPrimMediaParams(mediaPrimID, [
-                PRIM_MEDIA_CURRENT_URL, "data:text/html;base64," + llBase64Encode(htmlContent),
+
+            // Update the texture on the script's prim
+            llSetTexture(MEDIA_TEXTURE, ALL_SIDES);
+
+            // Display the chat history in the media prim
+            llSetPrimMediaParams(LINK_THIS, [
+                PRIM_MEDIA_CURRENT_URL, webURL,
                 PRIM_MEDIA_AUTO_SCALE, TRUE,
                 PRIM_MEDIA_AUTO_LOOP, FALSE,
-                PRIM_MEDIA_AUTO_PLAY, TRUE
+                PRIM_MEDIA_AUTO_PLAY, FALSE,
+                PRIM_MEDIA_WIDTH_PIXELS, 512,
+                PRIM_MEDIA_HEIGHT_PIXELS, 512,
+                PRIM_MEDIA_WHITELIST, ["http://*"]
             ]);
+
+            // Show the chat history in local chat
+            llSay(0, "Chat history loaded.");
+        }
+        else
+        {
+            llSay(0, "An error occurred while fetching the chat history.");
         }
     }
 }
