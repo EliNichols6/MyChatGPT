@@ -173,6 +173,27 @@ def handle_chat():
         file2.write(' @keyframes blink-caret {\n')
         file2.write('50% { border-color: transparent; }\n')
         file2.write('}\n')
+        
+        file2.write('.animated-text p {\n')
+        file2.write('  animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;\n')
+        file2.write('  border-right: 2px solid;\n')
+        file2.write(' overflow: hidden;\n')
+        file2.write(' letter-spacing: 0.1em;\n')
+        file2.write('}\n')
+        file2.write('</style>\n')
+
+        # Reloading the page automatically every 15 seconds
+        file2.write('<script>\n')
+        file2.write('function autoRefresh() { window.location = window.location.href; }\n')
+        file2.write('setInterval(autoRefresh, 15000);')  # Automatic reload every 15 seconds - adjust as needed
+        file2.write('</script>\n')
+
+        file2.write('</head>\n')
+
+
+        file2.write('<body>\n')
+        file2.write('<div id="content" class="container">\n')
+        
         # Write the content from the text file within a <div> tag to preserve line breaks
         for i in range(0, len(user_content)): # user_content and bot_content lists have the same lengths
             if i == len(user_content) - 1:
