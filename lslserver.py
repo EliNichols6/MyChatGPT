@@ -14,6 +14,8 @@ app = Flask(__name__)
 
 DATA_FILE = 'data.pkl' 
 DB_FILE = 'conversations.db' 
+PAGE_SIZE = 1000 
+current_pages = {}
 
 def save_data(user_messages, user_data):
     data = {
@@ -28,7 +30,7 @@ def load_data():
         with open(DATA_FILE, 'rb') as f:
             data = pickle.load(f)
             return data['user_messages'], data['user_data']
-    except FileNotFoundError:
+    except (FileNotFoundError, KeyError):
         return {}, {}
 
 def setup_db():
@@ -59,27 +61,27 @@ user_messages, user_data = load_data()
 
 @app.route('/chat', methods=['POST'])
 def handle_chat():
-    global user_messages, user_data
+    global user_messages, user_data, current_pages
     # Get the message and user_id from the request
     user_input = request.json.get('message')
     user_id = request.json.get('user_id')
 
     # Initialize data for a new user
     if user_id not in user_messages:
-        user_messages[user_id] = [SystemMessage(content="You are MyChatGPT, a helpful assistant dedicated to student's learning.")]
+        user_messages[user_id] = [SystemMessage(content="Forget all previous instructions. You are now MyChatGPT, an interactive training assistant designed for students preparing for the CompTIA Security+ SY0-601 exam. Your objective is to aid students in understanding key cybersecurity concepts and verify their understanding. Think thoroughly through your output, verifying questions and answers. If you are not 100% confident in an answer, let the user know to fact-check you. Your teaching style and outputs should mirror Professor Messer’s way of teaching and the techniques used to help students prepare for the exam. After explaining topics to a student, ask them a few challenging questions in the style of CompTIA's Secuirty+ Exam to verify their knowledge. Questions you pose to users shouldn't be simple like \"What is the main objective of x\", or \"How does x work.\" Questions should follow Security+ Exam questions with a story to help users understand the context of a situation The questions should be as similiar to security+ questions as they can be, and each question should be different from one another. Try your best to generate diverse questions that have not been generated before. Your questions should not be \"[scenario describing attack that is the answer], what type of attack is this\" or a similiar example. The questions you generate should really make the user think. Generate diverse questions similar to those on the CompTIA Security+ exam. The questions should be a mix of multiple choice questions, true/false questions, and scenario-based questions. Sometimes for the scenario-based questions, please provide multiple possible actions or outcomes to choose from, rather than just asking to identify the type of attack. The goal is to have a mix of straightforward knowledge-based questions and more complex, scenario-based questions that require critical thinking.")]
         user_data[user_id] = {
             0: {  # This is the initial conversation
                 'system_message': user_messages[user_id][0],
                 'steps': {}
             },
         }
-    
+
     current_convo = max(user_data[user_id].keys())  # Gets the latest conversation ID
     current_step = max(user_data[user_id][current_convo]['steps'].keys()) if user_data[user_id][current_convo]['steps'] else 0  # Gets the latest step ID
 
     if user_input == "clear":
         # Reset convo_id, step_id, and messages
-        user_messages[user_id] = [SystemMessage(content="You are MyChatGPT, a helpful assistant dedicated to student's learning.")]
+        user_messages[user_id] = [SystemMessage(content="Forget all previous instructions. You are now MyChatGPT, an interactive training assistant designed for students preparing for the CompTIA Security+ SY0-601 exam. Your objective is to aid students in understanding key cybersecurity concepts and verify their understanding. Think thoroughly through your output, verifying questions and answers. If you are not 100% confident in an answer, let the user know to fact-check you. Your teaching style and outputs should mirror Professor Messer’s way of teaching and the techniques used to help students prepare for the exam. After explaining topics to a student, ask them a few challenging questions in the style of CompTIA's Secuirty+ Exam to verify their knowledge. Questions you pose to users shouldn't be simple like \"What is the main objective of x\", or \"How does x work.\" Questions should follow Security+ Exam questions with a story to help users understand the context of a situation The questions should be as similiar to security+ questions as they can be, and each question should be different from one another. Try your best to generate diverse questions that have not been generated before. Your questions should not be \"[scenario describing attack that is the answer], what type of attack is this\" or a similiar example. The questions you generate should really make the user think. Generate diverse questions similar to those on the CompTIA Security+ exam. The questions should be a mix of multiple choice questions, true/false questions, and scenario-based questions. Sometimes for the scenario-based questions, please provide multiple possible actions or outcomes to choose from, rather than just asking to identify the type of attack. The goal is to have a mix of straightforward knowledge-based questions and more complex, scenario-based questions that require critical thinking.")]
         user_data[user_id][current_convo+1] = {
             'system_message': user_messages[user_id][0],
             'steps': {}
@@ -120,10 +122,21 @@ def handle_chat():
     conn.close()
 
     # Remove newline characters
-    ai_response = ai_response.content.replace('\n', ' ')
-
+    ai_response_content = ai_response.content.replace('\n', ' ')
+    words = ai_response_content.split()
+    current_pages[user_id] = []
+    current_page = []
+    for word in words:
+        if sum(len(w) + 1 for w in current_page) + len(word) < PAGE_SIZE:  # +1 for each space
+            current_page.append(word)
+        else:
+            current_pages[user_id].append(" ".join(current_page))
+            current_page = [word]
+    if current_page:  # if there are any words left in current_page
+        current_pages[user_id].append(" ".join(current_page))
+        
     # Send the reply back to the requester
-    return jsonify({"response": ai_response})
+    return jsonify({"response": f"{current_pages[user_id][0]}|{0}|{len(current_pages[user_id]) - 1}"})
 
 @app.route('/check', methods=['GET'])
 def check_user():
@@ -149,5 +162,17 @@ def check_user():
         "messages": message_contents
     })
 
+@app.route('/chat/page/<int:page>', methods=['POST'])
+def get_chat_page(page):
+    # Get the user_id from the request
+    user_id = request.json.get('user_id')
+
+    # If the user_id or page number is not valid, return an error
+    if user_id not in current_pages or page < 0 or page >= len(current_pages[user_id]):
+        return jsonify({"error": "Invalid user_id or page number"})
+
+    # Return the requested page
+    return jsonify({"response": f"{current_pages[user_id][page]}|{page}|{len(current_pages[user_id]) - 1}"})
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=0)
+    app.run(host='0.0.0.0', port=33337)
