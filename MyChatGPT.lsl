@@ -1,5 +1,6 @@
-string url = "http://ec2-3-144-200-75.us-east-2.compute.amazonaws.com:42061/chat"; // Replace with your Python server URL
-string userId = "1"; // Set your user ID here
+string url = "http://ec2-3-21-122-251.us-east-2.compute.amazonaws.com:33337/chat"; // Replace with your Python server URL
+string userId = "0"; // Set your user ID here
+integer currentPage = 0; // This will keep track of the current page
 
 default
 {
@@ -12,6 +13,7 @@ default
     {
         if (llGetSubString(message, 0, 7) == "/chatgpt")
         {
+            currentPage = 0; // Reset the current page to 0
             // Extract the actual message after "/chatgpt "
             string actualMessage = llGetSubString(message, 9, -1);
             string body = "{\"message\": \"" + actualMessage + "\", \"user_id\": \"" + userId + "\"}";
@@ -33,7 +35,21 @@ default
             return;
         }
 
-        llSay(0, body); // Output the chatbot response in the chat
+        // Parse the delimited data
+        list data = llParseString2List(body, ["|"], []);
+        string response = llList2String(data, 0);
+        integer page = (integer)llList2String(data, 1);
+        integer totalPages = (integer)llList2String(data, 2);
+
+        llSay(0, response); // Output the chatbot response in the chat
+
+        if (page < totalPages) // If there are more pages
+        {
+            currentPage++;
+            string pageUrl = url + "/page/" + (string)currentPage;
+            string requestBody = "{\"user_id\": \"" + userId + "\"}";
+            llHTTPRequest(pageUrl, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/json", HTTP_BODY_MAXLENGTH, 8192], requestBody);
+        }
 
         // This part is triggered if the HTTP request fails for any reason (e.g., the server is down, the URL is invalid, etc.)
         if (status >= 400)
