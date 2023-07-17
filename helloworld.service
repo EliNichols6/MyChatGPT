@@ -1,0 +1,14 @@
+## To create and edit gunicorn service named 'helloworld' type within terminal command: sudo nano /etc/systemd/system/helloworld.service
+## Make adjustments as needed
+
+[Unit]
+Description=Gunicorn instance for a flask app of lslserver.py
+After=network.target
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/helloworld
+ExecStart=/home/ubuntu/helloworld/venv/bin/gunicorn -b localhost:8080 lslserver:app
+Restart=always
+[Install]
+WantedBy=multi-user.target
