@@ -33,6 +33,9 @@ MyChatGPT is a project that allows integration of OpenAI's ChatGPT into the Seco
 
 7. Create a `conversations.db` file in the root directory - this will store user conversations
 
+### Implementing Access to Server URL from Any Location
+* For first time use, follow the steps found in this video [here](https://www.youtube.com/watch?v=z5XiVh6v4uI&ab_channel=VincentStevenson). Written steps can be found in the description below the video. Note Ubuntu is being used as the OS, so be aware of the difference in syntax if Linux is being used instead.
+
 8. Run the Python server:
 
     ```bash
@@ -49,3 +52,10 @@ MyChatGPT is a project that allows integration of OpenAI's ChatGPT into the Seco
 ## Usage
 Once you're in Second Life, type a message in the local chat near the object with the LSL script starting with `/chatgpt`, followed by your question or statement. The ChatGPT-powered NPC will respond accordingly.
 Responses will remind you how many user messages you've used in the conversation. Current limits are unknown, but it's reccomended to use '/chatgpt clear' to clear the conversation history. 
+
+## Starting Up Server After First Use
+1. Use commands `cd helloworld` to go into directory and `source venv/bin/activate` to activate virtual environment
+2. Use `sudo systemctl start helloworld` and `sudo systemctl enable helloworld` to enable gunicorn service
+3. Use `sudo systemctl start nginx` and `sudo systemctl enable nginx` to enable nginx service
+4. Run using `python3 lslserver.py`
+5. When finished, ensure that both nginx and gunicorn services are stopped using `sudo systemctl stop helloworld` and `sudo systemctl stop nginx`
