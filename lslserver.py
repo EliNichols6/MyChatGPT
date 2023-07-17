@@ -197,8 +197,8 @@ def handle_chat():
         # Write the content from the text file within a <div> tag to preserve line breaks
         for i in range(0, len(user_content)): # user_content and bot_content lists have the same lengths
             if i == len(user_content) - 1:
-                file2.write('<div class="chat-content animated-text" style="font-size: 40px; font-family: Arial, sans-serif; color: red"><p>{}</p></d>
-                file2.write('<div class="chat-content animated-text" style="font-size: 40px; font-family: Arial, sans-serif; color: blue"><p>{}</p></>
+                file2.write('<div class="chat-content animated-text" style="font-size: 40px; font-family: Arial, sans-serif; color: red"><p>{}</p></div>\n'.format(user_content[i]))
+                file2.write('<div class="chat-content animated-text" style="font-size: 40px; font-family: Arial, sans-serif; color: blue"><p>{}</p></div>\n'.format(bot_content[i]))
             else:
                 file2.write('<div class="chat-content" style="font-size: 40px; font-family: Arial, sans-serif; color: red"><p>{}</p></div>\n'.format(>
                 file2.write('<div class="chat-content" style="font-size: 40px; font-family: Arial, sans-serif; color: blue"><p>{}</p></div>\n'.format>
