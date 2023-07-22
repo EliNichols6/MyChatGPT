@@ -12,8 +12,8 @@ from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-DATA_FILE = 'data.pkl' 
-DB_FILE = 'conversations.db' 
+DATA_FILE = 'data.pkl'
+DB_FILE = 'conversations.db'
 
 def save_data(user_messages, user_data):
     data = {
@@ -82,7 +82,7 @@ def handle_chat():
                 'steps': {}
             },
         }
-    
+
     current_convo = max(user_data[user_id].keys())  # Gets the latest conversation ID
     current_step = max(user_data[user_id][current_convo]['steps'].keys()) if user_data[user_id][current_convo]['steps'] else 0  # Gets the latest step ID
 
@@ -124,7 +124,7 @@ def handle_chat():
             user_message,
             ai_response
         ) VALUES (?, ?, ?, ?, ?, ?)
-    ''', (user_id, current_convo, current_step+1, user_data[user_id][current_convo]['system_message'].content, user_input, ai_response.content))  
+    ''', (user_id, current_convo, current_step+1, user_data[user_id][current_convo]['system_message'].content, user_input, ai_response.content))
     conn.commit()
     conn.close()
 
@@ -136,7 +136,7 @@ def handle_chat():
 
 @app.route('/check', methods=['GET'])
 def check_user():
-    # Get the user_id from the request
+    # Get the user_id from the URL parameters
     user_id = request.args.get('user_id')
 
     # If the user_id does not exist, return an error message
@@ -146,17 +146,16 @@ def check_user():
     # Get the user's messages
     messages = user_messages[user_id]
 
-    # Count the number of user messages
-    user_message_count = sum(isinstance(msg, HumanMessage) for msg in messages)
+    # Format the chat history into an HTML representation
+    formatted_history = ''
+    for msg in messages:
+        if isinstance(msg, HumanMessage):
+            formatted_history += f'<div class="message user">{msg.content}</div>'
+        elif isinstance(msg, AIMessage):
+            formatted_history += f'<div class="message assistant">{msg.content}</div>'
 
-    # Create a list to hold the message contents
-    message_contents = [msg.content for msg in messages]
-
-    # Return the user's message count and all messages
-    return jsonify({
-        "user_message_count": user_message_count,
-        "messages": message_contents
-    })
+    return render_template('chat_history.html', formatted_history=formatted_history)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
+
