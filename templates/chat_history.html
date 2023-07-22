@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MyChatGPT - Chat History</title>
+    <style>
+        .message {
+            margin: 10px 0;
+        }
+
+        .user {
+            color: blue;
+        }
+
+        .assistant {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>MyChatGPT - Chat History</h1>
+    <div id="message-container">
+        {{ formatted_history | safe }}
+    </div>
+</body>
+</html>
