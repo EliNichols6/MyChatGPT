@@ -8,12 +8,14 @@ from langchain.schema import (
 import os
 import sqlite3
 import pickle
+import json
 from dotenv import load_dotenv
 
 app = Flask(__name__)
 
 DATA_FILE = 'data.pkl'
 DB_FILE = 'conversations.db'
+USER_DATA_FILE = 'user_data.json'
 
 def save_data(user_messages, user_data):
     data = {
@@ -49,6 +51,17 @@ def setup_db():
     conn.commit()
     conn.close()
 
+def save_user_data(user_data):
+    with open(USER_DATA_FILE, 'w') as f:
+        json.dump(user_data, f)
+
+def load_user_data():
+    try:
+        with open(USER_DATA_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
 setup_db()
 
 load_dotenv()  # loads environment variables from '.env' file
@@ -61,6 +74,7 @@ chat = ChatOpenAI(api_key=openai_api_key, temperature=0)
 
 # Initialize dictionaries to hold the messages for each user and the corresponding data
 user_messages, user_data = load_data()
+user_data_json = load_user_data()
 
 @app.route('/', methods=['GET'])
 def index():
@@ -112,27 +126,17 @@ def handle_chat():
 
     save_data(user_messages, user_data)  # Update pickle data file after every interaction
 
-    # Save to SQLite database
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''
-        INSERT INTO conversations (
-            user_id,
-            convo_id,
-            step_id,
-            system_message,
-            user_message,
-            ai_response
-        ) VALUES (?, ?, ?, ?, ?, ?)
-    ''', (user_id, current_convo, current_step+1, user_data[user_id][current_convo]['system_message'].content, user_input, ai_response.content))
-    conn.commit()
-    conn.close()
+    # Retrieve user's display name from the JSON database if available
+    user_display_name = user_data_json.get(user_id, None)
 
     # Remove newline characters
     ai_response = ai_response.content.replace('\n', ' ')
 
-    # Send the reply back to the requester
-    return jsonify({"response": ai_response})
+    # Send the reply back to the requester, displaying the user's display name if available
+    if user_display_name:
+        return jsonify({"response": f"{user_display_name}: {ai_response}"})
+    else:
+        return jsonify({"response": f"User: {ai_response}"})
 
 @app.route('/check', methods=['GET'])
 def check_user():
@@ -146,16 +150,41 @@ def check_user():
     # Get the user's messages
     messages = user_messages[user_id]
 
+    # Retrieve user's display name from the JSON database if available
+    user_display_name = user_data_json.get(user_id, None)
+
     # Format the chat history into an HTML representation
     formatted_history = ''
     for msg in messages:
         if isinstance(msg, HumanMessage):
-            formatted_history += f'<div class="message user">{msg.content}</div>'
+            if user_display_name:
+                formatted_history += f'<div class="message user">{user_display_name}: {msg.content}</div>'
+            else:
+                formatted_history += f'<div class="message user">User: {msg.content}</div>'
         elif isinstance(msg, AIMessage):
-            formatted_history += f'<div class="message assistant">{msg.content}</div>'
+            formatted_history += f'<div class="message assistant">AI: {msg.content}</div>'
 
     return render_template('chat_history.html', formatted_history=formatted_history)
 
+@app.route('/register', methods=['POST'])
+def register_user():
+    global user_data_json
+
+    # Get the user_id and display_name from the request
+    user_id = request.json.get('user_id')
+    display_name = request.json.get('display_name')
+
+    # Reset the user's display name to "User" if display_name is empty
+    if user_id and display_name == "/register":
+        user_data_json[user_id] = "User"
+        user_data[user_id]['display_name'] = "User"
+    elif user_id and display_name:
+        user_data_json[user_id] = display_name
+        user_data[user_id]['display_name'] = display_name
+
+    save_user_data(user_data_json)  # Save the updated user data to the JSON file
+
+    return jsonify({"response": "User registered successfully!"})
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
-
