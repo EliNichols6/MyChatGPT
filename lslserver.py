@@ -162,7 +162,7 @@ def check_user():
             else:
                 formatted_history += f'<div class="message user">User: {msg.content}</div>'
         elif isinstance(msg, AIMessage):
-            formatted_history += f'<div class="message assistant">AI: {msg.content}</div>'
+            formatted_history += f'<div class="message assistant">MyChatGPT: {msg.content}</div>'
 
     return render_template('chat_history.html', formatted_history=formatted_history)
 
