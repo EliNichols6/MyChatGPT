@@ -1,8 +1,8 @@
 // Constants
-string FLASK_SERVER_URL = "http://ec2-52-70-243-182.compute-1.amazonaws.com/";  // Replace with your Flask server URL
+string FLASK_SERVER_URL = "http://ec2-44-212-72-97.compute-1.amazonaws.com";  // Replace with your Flask server URL (without trailing slash)
 
 // Media texture UUID
-key MEDIA_TEXTURE = "328a1c20-95a1-4bea-8f40-49043ef242ad";  // Replace with the UUID of your media texture
+key MEDIA_TEXTURE = "a58594c2-7730-4c0c-ad0b-5ab16f5c0adc";  // Replace with the UUID of your media texture
 
 // Variables
 key userUUID;  // User's UUID
@@ -14,10 +14,9 @@ default
     state_entry()
     {
         llListen(0, "", NULL_KEY, "");  // Listen to all channels and chat from any source
-        
+
         // Get user's UUID
         userUUID = llGetOwner();
-        
         // Set the initial web URL
         webURL = FLASK_SERVER_URL + "/check?user_id=" + (string)userUUID;
     }
@@ -26,11 +25,24 @@ default
     {
         if (message == "/mychatgpt")
         {
+            llSay(0, "Running...");
             // Request chat history from Flask server
             llHTTPRequest(webURL, [HTTP_METHOD, "GET"], "");
         }
+        else if (llGetSubString(message, 0, 8) == "/register")
+        {
+            llSay(0, "Running...");
+            // Extract the user's display name after "/register "
+            string displayName = llGetSubString(message, 10, -1);
+
+            // Register the user's UUID and display name with the Flask server
+            string url = FLASK_SERVER_URL + "/register";
+            string body = "{\"user_id\": \"" + (string)userUUID + "\", \"display_name\": \"" + displayName + "\"}";
+            llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/json", HTTP_BODY_MAXLENGTH, 8192], body);
+        }
         else if (llGetSubString(message, 0, 9) == "/mychatgpt")
         {
+            llSay(0, "Running...");
             // Extract the actual message after "/mychatgpt "
             string actualMessage = llGetSubString(message, 11, -1);
             string url = FLASK_SERVER_URL + "/chat";
@@ -66,7 +78,7 @@ default
 
             // Display the chat history in the media prim
             llSetPrimMediaParams(LINK_THIS, [
-                PRIM_MEDIA_CURRENT_URL, webURL,
+                PRIM_MEDIA_CURRENT_URL, "text/html", webURL,
                 PRIM_MEDIA_AUTO_SCALE, TRUE,
                 PRIM_MEDIA_AUTO_LOOP, FALSE,
                 PRIM_MEDIA_AUTO_PLAY, FALSE,
@@ -77,6 +89,7 @@ default
 
             // Show the chat history in local chat
             llSay(0, "Chat history loaded.");
+            llSay(0, webURL);
         }
         else
         {
