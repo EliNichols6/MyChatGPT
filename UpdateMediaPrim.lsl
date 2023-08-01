@@ -1,8 +1,9 @@
 // Constants
-string FLASK_SERVER_URL = "http://ec2-44-212-72-97.compute-1.amazonaws.com";  // Replace with your Flask server URL (without trailing slash)
+string FLASK_SERVER_URL = "http://ec2-184-72-96-28.compute-1.amazonaws.com";  // Replace with your Flask server URL (without trailing slash)
 
 // Media texture UUID
-key MEDIA_TEXTURE = "a58594c2-7730-4c0c-ad0b-5ab16f5c0adc";  // Replace with the UUID of your media texture
+key MEDIA_TEXTURE = "2f87dc27-caea-4577-9b36-1d8b06ae3652";  // Replace with the UUID of your media texture
+integer listenHandle;
 
 // Variables
 key userUUID;  // User's UUID
@@ -15,14 +16,14 @@ default
     {
         llListen(0, "", NULL_KEY, "");  // Listen to all channels and chat from any source
 
-        // Get user's UUID
-        userUUID = llGetOwner();
-        // Set the initial web URL
-        webURL = FLASK_SERVER_URL + "/check?user_id=" + (string)userUUID;
     }
 
     listen(integer channel, string name, key id, string message)
     {
+        // Get user's UUID
+        userUUID = id;
+        // Set the initial web URL
+        webURL = FLASK_SERVER_URL + "/check?user_id=" + (string)userUUID;
         if (message == "/mychatgpt")
         {
             llSay(0, "Running...");
