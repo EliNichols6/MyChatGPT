@@ -97,15 +97,19 @@ def handle_chat():
             },
         }
 
-    current_convo = max(user_data[user_id].keys())  # Gets the latest conversation ID
-    current_step = max(user_data[user_id][current_convo]['steps'].keys()) if user_data[user_id][current_convo]['steps'] else 0  # Gets the latest step ID
+    integer_keys = [k for k in user_data[user_id].keys() if isinstance(k, int)]
+    current_convo = max(integer_keys) if integer_keys else 0
+    current_step = max(user_data[user_id][current_convo]['steps'].keys()) if user_data[user_id][current_convo]['steps'] else 0
 
     if user_input == "clear":
         # Reset convo_id, step_id, and messages
         user_messages[user_id] = [SystemMessage(content="You are MyChatGPT, a helpful assistant dedicated to student's learning.")]
-        user_data[user_id][current_convo+1] = {
-            'system_message': user_messages[user_id][0],
-            'steps': {}
+        user_data[user_id] = {
+            'display_name': user_data[user_id].get('display_name', None),
+            current_convo+1: {
+                'system_message': user_messages[user_id][0],
+                'steps': {}
+            }
         }
         save_data(user_messages, user_data)
         return jsonify({"response": "Chat history cleared!"})
