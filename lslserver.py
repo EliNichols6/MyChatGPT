@@ -1,19 +1,21 @@
-from flask import Flask, request, jsonify
-from dotenv import load_dotenv
-import os
-import sqlite3
-import pickle
+from flask import Flask, request, jsonify, render_template
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import (
     SystemMessage,
     HumanMessage,
     AIMessage
 )
+import os
+import sqlite3
+import pickle
+import json
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-DATA_FILE = 'data.pkl' 
-DB_FILE = 'conversations.db' 
+DATA_FILE = 'data.pkl'
+DB_FILE = 'conversations.db'
+USER_DATA_FILE = 'user_data.json'
 PAGE_SIZE = 1000 
 current_pages = {}
 
@@ -29,8 +31,8 @@ def load_data():
     try:
         with open(DATA_FILE, 'rb') as f:
             data = pickle.load(f)
-            return data['user_messages'], data['user_data']
-    except (FileNotFoundError, KeyError):
+            return data.get('user_messages', {}), data.get('user_data', {})
+    except FileNotFoundError:
         return {}, {}
 
 def setup_db():
@@ -51,24 +53,42 @@ def setup_db():
     conn.commit()
     conn.close()
 
+def save_user_data(user_data):
+    with open(USER_DATA_FILE, 'w') as f:
+        json.dump(user_data, f)
+
+def load_user_data():
+    try:
+        with open(USER_DATA_FILE, 'r') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
 setup_db()
 
-load_dotenv()  # loads api key from '.env' file
+load_dotenv()  # loads environment variables from '.env' file
+
+# Initialize the ChatOpenAI object with the API key
 chat = ChatOpenAI(temperature=0)
 
 # Initialize dictionaries to hold the messages for each user and the corresponding data
 user_messages, user_data = load_data()
+user_data_json = load_user_data()
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html', messages=user_messages.get('0', []))
 
 @app.route('/chat', methods=['POST'])
 def handle_chat():
-    global user_messages, user_data, current_pages
+    global user_messages, user_data
     # Get the message and user_id from the request
     user_input = request.json.get('message')
     user_id = request.json.get('user_id')
 
     # Initialize data for a new user
     if user_id not in user_messages:
-        user_messages[user_id] = [SystemMessage(content="Forget all previous instructions. You are now MyChatGPT, an interactive training assistant designed for students preparing for the CompTIA Security+ SY0-601 exam. Your objective is to aid students in understanding key cybersecurity concepts and verify their understanding. Think thoroughly through your output, verifying questions and answers. If you are not 100% confident in an answer, let the user know to fact-check you. Your teaching style and outputs should mirror Professor Messer’s way of teaching and the techniques used to help students prepare for the exam. After explaining topics to a student, ask them a few challenging questions in the style of CompTIA's Secuirty+ Exam to verify their knowledge. Questions you pose to users shouldn't be simple like \"What is the main objective of x\", or \"How does x work.\" Questions should follow Security+ Exam questions with a story to help users understand the context of a situation The questions should be as similiar to security+ questions as they can be, and each question should be different from one another. Try your best to generate diverse questions that have not been generated before. Your questions should not be \"[scenario describing attack that is the answer], what type of attack is this\" or a similiar example. The questions you generate should really make the user think. Generate diverse questions similar to those on the CompTIA Security+ exam. The questions should be a mix of multiple choice questions, true/false questions, and scenario-based questions. Sometimes for the scenario-based questions, please provide multiple possible actions or outcomes to choose from, rather than just asking to identify the type of attack. The goal is to have a mix of straightforward knowledge-based questions and more complex, scenario-based questions that require critical thinking.")]
+        user_messages[user_id] = [SystemMessage(content="You are MyChatGPT, a helpful assistant dedicated to student's learning.")]
         user_data[user_id] = {
             0: {  # This is the initial conversation
                 'system_message': user_messages[user_id][0],
@@ -76,15 +96,19 @@ def handle_chat():
             },
         }
 
-    current_convo = max(user_data[user_id].keys())  # Gets the latest conversation ID
-    current_step = max(user_data[user_id][current_convo]['steps'].keys()) if user_data[user_id][current_convo]['steps'] else 0  # Gets the latest step ID
+    integer_keys = [k for k in user_data[user_id].keys() if isinstance(k, int)]
+    current_convo = max(integer_keys) if integer_keys else 0
+    current_step = max(user_data[user_id][current_convo]['steps'].keys()) if user_data[user_id][current_convo]['steps'] else 0
 
     if user_input == "clear":
         # Reset convo_id, step_id, and messages
-        user_messages[user_id] = [SystemMessage(content="Forget all previous instructions. You are now MyChatGPT, an interactive training assistant designed for students preparing for the CompTIA Security+ SY0-601 exam. Your objective is to aid students in understanding key cybersecurity concepts and verify their understanding. Think thoroughly through your output, verifying questions and answers. If you are not 100% confident in an answer, let the user know to fact-check you. Your teaching style and outputs should mirror Professor Messer’s way of teaching and the techniques used to help students prepare for the exam. After explaining topics to a student, ask them a few challenging questions in the style of CompTIA's Secuirty+ Exam to verify their knowledge. Questions you pose to users shouldn't be simple like \"What is the main objective of x\", or \"How does x work.\" Questions should follow Security+ Exam questions with a story to help users understand the context of a situation The questions should be as similiar to security+ questions as they can be, and each question should be different from one another. Try your best to generate diverse questions that have not been generated before. Your questions should not be \"[scenario describing attack that is the answer], what type of attack is this\" or a similiar example. The questions you generate should really make the user think. Generate diverse questions similar to those on the CompTIA Security+ exam. The questions should be a mix of multiple choice questions, true/false questions, and scenario-based questions. Sometimes for the scenario-based questions, please provide multiple possible actions or outcomes to choose from, rather than just asking to identify the type of attack. The goal is to have a mix of straightforward knowledge-based questions and more complex, scenario-based questions that require critical thinking.")]
-        user_data[user_id][current_convo+1] = {
-            'system_message': user_messages[user_id][0],
-            'steps': {}
+        user_messages[user_id] = [SystemMessage(content="You are MyChatGPT, a helpful assistant dedicated to student's learning.")]
+        user_data[user_id] = {
+            'display_name': user_data[user_id].get('display_name', None),
+            current_convo+1: {
+                'system_message': user_messages[user_id][0],
+                'steps': {}
+            }
         }
         save_data(user_messages, user_data)
         return jsonify({"response": "Chat history cleared!"})
@@ -121,9 +145,13 @@ def handle_chat():
     conn.commit()
     conn.close()
 
+    # Retrieve user's display name from the JSON database if available
+    user_display_name = user_data_json.get(user_id, None)
+
     # Remove newline characters
-    ai_response_content = ai_response.content.replace('\n', ' ')
-    words = ai_response_content.split()
+    ai_response = ai_response.content.replace('\n', ' ')
+    
+    words = ai_response.split()
     current_pages[user_id] = []
     current_page = []
     for word in words:
@@ -138,9 +166,16 @@ def handle_chat():
     # Send the reply back to the requester
     return jsonify({"response": f"{current_pages[user_id][0]}|{0}|{len(current_pages[user_id]) - 1}"})
 
+
+    """# Send the reply back to the requester, displaying the user's display name if available
+    if user_display_name:
+        return jsonify({"response": f"{user_display_name}: {ai_response}"})
+    else:
+        return jsonify({"response": f"User: {ai_response}"})"""
+
 @app.route('/check', methods=['GET'])
 def check_user():
-    # Get the user_id from the request
+    # Get the user_id from the URL parameters
     user_id = request.args.get('user_id')
 
     # If the user_id does not exist, return an error message
@@ -150,17 +185,41 @@ def check_user():
     # Get the user's messages
     messages = user_messages[user_id]
 
-    # Count the number of user messages
-    user_message_count = sum(isinstance(msg, HumanMessage) for msg in messages)
+    # Retrieve user's display name from the JSON database if available
+    user_display_name = user_data_json.get(user_id, None)
 
-    # Create a list to hold the message contents
-    message_contents = [msg.content for msg in messages]
+    # Format the chat history into an HTML representation
+    formatted_history = ''
+    for msg in messages:
+        if isinstance(msg, HumanMessage):
+            if user_display_name:
+                formatted_history += f'<div class="message user">{user_display_name}: {msg.content}</div>'
+            else:
+                formatted_history += f'<div class="message user">User: {msg.content}</div>'
+        elif isinstance(msg, AIMessage):
+            formatted_history += f'<div class="message assistant">MyChatGPT: {msg.content}</div>'
 
-    # Return the user's message count and all messages
-    return jsonify({
-        "user_message_count": user_message_count,
-        "messages": message_contents
-    })
+    return render_template('chat_history.html', formatted_history=formatted_history)
+
+@app.route('/register', methods=['POST'])
+def register_user():
+    global user_data_json
+
+    # Get the user_id and display_name from the request
+    user_id = request.json.get('user_id')
+    display_name = request.json.get('display_name')
+
+    # Reset the user's display name to "User" if display_name is empty
+    if user_id and display_name == "/register":
+        user_data_json[user_id] = "User"
+        user_data[user_id]['display_name'] = "User"
+    elif user_id and display_name:
+        user_data_json[user_id] = display_name
+        user_data[user_id]['display_name'] = display_name
+
+    save_user_data(user_data_json)  # Save the updated user data to the JSON file
+
+    return jsonify({"response": "User registered successfully!"})
 
 @app.route('/chat/page/<int:page>', methods=['POST'])
 def get_chat_page(page):
@@ -175,4 +234,4 @@ def get_chat_page(page):
     return jsonify({"response": f"{current_pages[user_id][page]}|{page}|{len(current_pages[user_id]) - 1}"})
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=33337)
+    app.run(host='0.0.0.0', port=5000)
