@@ -63,7 +63,8 @@ http_response(key request_id, integer status, list metadata, string body)
 
         if (body == "") // If the response body is empty
         {
-            llOwnerSay("Error: Empty response"); // Output an error message to the owner
+            llSay(0, "Chat history loaded.");
+            llSay(0, webURL);
             return;
         }
 
