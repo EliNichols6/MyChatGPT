@@ -12,11 +12,11 @@ default
     listen(integer channel, string name, key id, string message)
     {
         userId = id;
-        if (llGetSubString(message, 0, 7) == "/chatgpt")
+        if (llGetSubString(message, 0, 9) == "/mychatgpt")
         {
             currentPage = 0; // Reset the current page to 0
             // Extract the actual message after "/chatgpt "
-            string actualMessage = llGetSubString(message, 9, -1);
+            string actualMessage = llGetSubString(message, 11, -1);
             string body = "{\"message\": \"" + actualMessage + "\", \"user_id\": \"" + userId + "\"}";
             llHTTPRequest(url, [HTTP_METHOD, "POST", HTTP_MIMETYPE, "application/json", HTTP_BODY_MAXLENGTH, 8192], body);
         }
