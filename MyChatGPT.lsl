@@ -1,5 +1,5 @@
-string url = "http://ec2-3-21-122-251.us-east-2.compute.amazonaws.com:33337/chat"; // Replace with your Python server URL
-string userId = "0"; // Set your user ID here
+string url = "http://ec2-18-205-23-17.compute-1.amazonaws.com:5000/chat"; // Replace with your Python server URL
+string userId; // Set your user ID here
 integer currentPage = 0; // This will keep track of the current page
 
 default
@@ -11,6 +11,7 @@ default
 
     listen(integer channel, string name, key id, string message)
     {
+        userId = id;
         if (llGetSubString(message, 0, 7) == "/chatgpt")
         {
             currentPage = 0; // Reset the current page to 0
