@@ -24,7 +24,7 @@ default
         userUUID = id;
         // Set the initial web URL
         webURL = FLASK_SERVER_URL + "/check?user_id=" + (string)userUUID;
-        if (message == "/chatgpt")
+        if (message == "/mychatgpt")
         {
             // Request chat history from Flask server
             llHTTPRequest(webURL, [HTTP_METHOD, "GET"], "");
