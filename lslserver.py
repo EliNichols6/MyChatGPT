@@ -16,6 +16,10 @@ app = Flask(__name__)
 DATA_FILE = 'data.pkl'
 DB_FILE = 'conversations.db'
 USER_DATA_FILE = 'user_data.json'
+PAGE_SIZE = 1000 
+current_pages = {}
+cert_file = '/etc/nginx/ssl/server.crt'
+key_file = '/etc/nginx/ssl/MyChatGPT_WM.pem'
 
 def save_data(user_messages, user_data):
     data = {
@@ -66,11 +70,8 @@ setup_db()
 
 load_dotenv()  # loads environment variables from '.env' file
 
-# Get the OpenAI API key from the environment variable
-openai_api_key = os.getenv('OPENAI_API_KEY')
-
 # Initialize the ChatOpenAI object with the API key
-chat = ChatOpenAI(api_key=openai_api_key, temperature=0)
+chat = ChatOpenAI(temperature=0)
 
 # Initialize dictionaries to hold the messages for each user and the corresponding data
 user_messages, user_data = load_data()
@@ -130,17 +131,49 @@ def handle_chat():
 
     save_data(user_messages, user_data)  # Update pickle data file after every interaction
 
+    # Save to SQLite database
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO conversations (
+            user_id,
+            convo_id,
+            step_id,
+            system_message,
+            user_message,
+            ai_response
+        ) VALUES (?, ?, ?, ?, ?, ?)
+    ''', (user_id, current_convo, current_step+1, user_data[user_id][current_convo]['system_message'].content, user_input, ai_response.content))  
+    conn.commit()
+    conn.close()
+
     # Retrieve user's display name from the JSON database if available
     user_display_name = user_data_json.get(user_id, None)
 
     # Remove newline characters
     ai_response = ai_response.content.replace('\n', ' ')
+    
+    words = ai_response.split()
+    current_pages[user_id] = []
+    current_page = []
+    for word in words:
+        if sum(len(w) + 1 for w in current_page) + len(word) < PAGE_SIZE:  # +1 for each space
+            current_page.append(word)
+        else:
+            current_pages[user_id].append(" ".join(current_page))
+            current_page = [word]
+    if current_page:  # if there are any words left in current_page
+        current_pages[user_id].append(" ".join(current_page))
+        
+    # Send the reply back to the requester
+    return jsonify({"response": f"{current_pages[user_id][0]}|{0}|{len(current_pages[user_id]) - 1}"})
 
-    # Send the reply back to the requester, displaying the user's display name if available
+
+    """# Send the reply back to the requester, displaying the user's display name if available
     if user_display_name:
         return jsonify({"response": f"{user_display_name}: {ai_response}"})
     else:
-        return jsonify({"response": f"User: {ai_response}"})
+        return jsonify({"response": f"User: {ai_response}"})"""
 
 @app.route('/check', methods=['GET'])
 def check_user():
@@ -190,5 +223,18 @@ def register_user():
 
     return jsonify({"response": "User registered successfully!"})
 
+@app.route('/chat/page/<int:page>', methods=['POST'])
+def get_chat_page(page):
+    # Get the user_id from the request
+    user_id = request.json.get('user_id')
+
+    # If the user_id or page number is not valid, return an error
+    if user_id not in current_pages or page < 0 or page >= len(current_pages[user_id]):
+        return jsonify({"error": "Invalid user_id or page number"})
+
+    # Return the requested page
+    return jsonify({"response": f"{current_pages[user_id][page]}|{page}|{len(current_pages[user_id]) - 1}"})
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=443, ssl_context=(cert_file, key_file))
