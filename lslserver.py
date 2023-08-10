@@ -8,6 +8,7 @@ from langchain.schema import (
 import os
 import sqlite3
 import pickle
+import ssl
 import json
 from dotenv import load_dotenv
 
@@ -18,8 +19,8 @@ DB_FILE = 'conversations.db'
 USER_DATA_FILE = 'user_data.json'
 PAGE_SIZE = 1000 
 current_pages = {}
-cert_file = '/etc/nginx/ssl/server.crt'
-key_file = '/etc/nginx/ssl/MyChatGPT_WM.pem'
+cert_file = '/etc/nginx/ssl/server.crt.pem'
+key_file = '/etc/nginx/ssl/MyChatGPT_WM.key'
 
 def save_data(user_messages, user_data):
     data = {
